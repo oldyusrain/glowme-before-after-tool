@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Glowme Med Spa Before & After Pics</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <h1>Glowme Med Spa Before & After Pics</h1>
+            <p>上传 before / after 原图，选择相同角度后生成对比排版。</p>
+          </div>
+          <div class="actions">
+            <label class="upload-button">Upload before pics <input id="beforeInput" type="file" accept="image/*" multiple></label>
+            <label class="upload-button">Upload after pics <input id="afterInput" type="file" accept="image/*" multiple></label>
+          </div>
+        </header>
+
+        <section class="copy-controls">
+          <label>顶部标题 <input data-text="title" value="M22 IPL"></label>
+          <label>左下文案 <input data-text="before" value="Before"></label>
+          <label>右下文案 <input data-text="after" value="After-Same Day"></label>
+          <button id="downloadAllJpg" type="button">下载全部 JPG</button>
+        </section>
+
+        <section class="upload-status" aria-live="polite">
+          <div class="progress-card" data-progress-card="before">
+            <div class="progress-head">
+              <span>Before 上传处理</span>
+              <output data-progress-text="before">等待上传</output>
+            </div>
+            <progress data-progress="before" value="0" max="100"></progress>
+          </div>
+          <div class="progress-card" data-progress-card="after">
+            <div class="progress-head">
+              <span>After 上传处理</span>
+              <output data-progress-text="after">等待上传</output>
+            </div>
+            <progress data-progress="after" value="0" max="100"></progress>
+          </div>
+        </section>
+
+        <section id="comparisonSections" class="comparison-sections"></section>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
