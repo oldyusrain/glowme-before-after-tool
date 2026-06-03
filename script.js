@@ -27,6 +27,25 @@ const layoutText = {
   after: "After-Same Day",
 };
 
+function createDefaultViewSettings() {
+  return {
+    tab: "crop",
+    privacyBar: true,
+    transform: {
+      before: { zoom: 1, offsetX: 0, offsetY: -0.02, rotation: 0 },
+      after: { zoom: 1.03, offsetX: 0, offsetY: -0.01, rotation: 0 },
+    },
+    adjustment: {
+      before: { brightness: 1.06, contrast: 1.02, saturation: 1.02, warmth: 4 },
+      after: { brightness: 1.05, contrast: 1.02, saturation: 1.02, warmth: 3 },
+    },
+    redaction: {
+      before: { height: 280, y: 485 },
+      after: { height: 280, y: 485 },
+    },
+  };
+}
+
 const logoImage = new Image();
 let logoReady = false;
 logoImage.onload = () => {
@@ -38,22 +57,7 @@ logoImage.src = "logo-cropped.png";
 const settings = Object.fromEntries(
   views.map((view) => [
     view.id,
-    {
-      tab: "crop",
-      privacyBar: true,
-      transform: {
-        before: { zoom: 1, offsetX: 0, offsetY: -0.02, rotation: 0 },
-        after: { zoom: 1.03, offsetX: 0, offsetY: -0.01, rotation: 0 },
-      },
-      adjustment: {
-        before: { brightness: 1.06, contrast: 1.02, saturation: 1.02, warmth: 4 },
-        after: { brightness: 1.05, contrast: 1.02, saturation: 1.02, warmth: 3 },
-      },
-      redaction: {
-        before: { height: 280, y: 485 },
-        after: { height: 280, y: 485 },
-      },
-    },
+    createDefaultViewSettings(),
   ]),
 );
 
@@ -122,6 +126,10 @@ root.addEventListener("click", (event) => {
     rotateSelectedImage(button.dataset.role, viewId, Number(button.dataset.rotate));
     return;
   }
+  if (button.dataset.reset) {
+    resetView(viewId);
+    return;
+  }
   if (button.dataset.download) {
     renderComparison(viewId);
     downloadCanvas(getCanvas(viewId), `m22-ipl-${viewId}.jpg`, "image/jpeg", 0.94);
@@ -134,7 +142,10 @@ function renderSectionShell(view) {
       <div class="section-stage">
         <div class="section-head">
           <h2>${view.title}</h2>
-          <button type="button" data-download="jpg" data-view="${view.id}">下载本组 JPG</button>
+          <div class="section-actions">
+            <button type="button" data-reset="true" data-view="${view.id}">复原</button>
+            <button type="button" data-download="jpg" data-view="${view.id}">下载本组 JPG</button>
+          </div>
         </div>
         <div class="stage-pair-controls">
           <div>
@@ -317,6 +328,29 @@ function syncTransformInputs(viewId, role) {
   });
 }
 
+function syncAllInputs(viewId) {
+  ["transform", "adjustment", "redaction"].forEach((group) => {
+    ["before", "after"].forEach((role) => {
+      Object.entries(settings[viewId][group][role]).forEach(([field, value]) => {
+        const input = document.querySelector(
+          `input[data-group="${group}"][data-role="${role}"][data-field="${field}"][data-view="${viewId}"]`,
+        );
+        if (input) input.value = String(value);
+      });
+    });
+  });
+
+  const privacy = document.querySelector(`input[data-privacy="true"][data-view="${viewId}"]`);
+  if (privacy) privacy.checked = settings[viewId].privacyBar;
+}
+
+function resetView(viewId) {
+  settings[viewId] = createDefaultViewSettings();
+  syncAllInputs(viewId);
+  updateToolPanels(viewId);
+  renderComparison(viewId);
+}
+
 function getCanvasPoint(canvas, event) {
   const rect = canvas.getBoundingClientRect();
   return {
@@ -463,24 +497,17 @@ function drawPhoto(ctx, img, rect, transform, adjustment) {
   const offsetX = transform.offsetX || 0;
   const offsetY = transform.offsetY || 0;
   const rotation = ((transform.rotation || 0) * Math.PI) / 180;
-  const sourceRatio = img.naturalWidth / img.naturalHeight;
-  const destRatio = rect.w / rect.h;
-  let sw = img.naturalWidth;
-  let sh = img.naturalHeight;
-
-  if (sourceRatio > destRatio) sw = img.naturalHeight * destRatio;
-  else sh = img.naturalWidth / destRatio;
-
-  sw = sw / zoom;
-  sh = sh / zoom;
-
-  const sx = clamp((img.naturalWidth - sw) / 2 + offsetX * (img.naturalWidth - sw), 0, img.naturalWidth - sw);
-  const sy = clamp((img.naturalHeight - sh) / 2 + offsetY * (img.naturalHeight - sh), 0, img.naturalHeight - sh);
   const diagonalScale = rotation === 0 ? 1 : 1.08;
-  const drawW = rect.w * diagonalScale;
-  const drawH = rect.h * diagonalScale;
+  const baseScale = Math.max(rect.w / img.naturalWidth, rect.h / img.naturalHeight);
+  const imageScale = baseScale * zoom * diagonalScale;
+  const drawW = img.naturalWidth * imageScale;
+  const drawH = img.naturalHeight * imageScale;
   const centerX = rect.x + rect.w / 2;
   const centerY = rect.y + rect.h / 2;
+  const maxOffsetX = Math.max(0, (drawW - rect.w) / 2);
+  const maxOffsetY = Math.max(0, (drawH - rect.h) / 2);
+  const drawX = -drawW / 2 - clamp(offsetX * rect.w, -maxOffsetX, maxOffsetX);
+  const drawY = -drawH / 2 - clamp(offsetY * rect.h, -maxOffsetY, maxOffsetY);
 
   ctx.save();
   ctx.beginPath();
@@ -489,7 +516,7 @@ function drawPhoto(ctx, img, rect, transform, adjustment) {
   ctx.translate(centerX, centerY);
   ctx.rotate(rotation);
   ctx.filter = `brightness(${adjustment.brightness}) contrast(${adjustment.contrast}) saturate(${adjustment.saturation})`;
-  ctx.drawImage(img, sx, sy, sw, sh, -drawW / 2, -drawH / 2, drawW, drawH);
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
   ctx.filter = "none";
   ctx.restore();
 

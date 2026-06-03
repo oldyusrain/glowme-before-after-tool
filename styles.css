@@ -218,6 +218,22 @@ progress {
   font-size: 13px;
 }
 
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.section-actions button[data-reset] {
+  background: white;
+  color: var(--accent);
+}
+
+.section-actions button[data-reset]:hover {
+  background: #edf6f4;
+}
+
 .stage-pair-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
